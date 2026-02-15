@@ -75,7 +75,7 @@ class _SignupScreenState extends State<SignupScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => DashboardScreen(userName: username),
+            builder: (_) => DashboardScreen(userName: email),
           ),
         );
       } else {
