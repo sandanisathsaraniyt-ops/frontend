@@ -191,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const ForgotPasswordScreen(),
+                          builder: (_) =>  ForgotPasswordScreen(email:_emailController.text),
                         ),
                       );
                     },

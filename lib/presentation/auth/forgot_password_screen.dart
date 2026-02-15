@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../dashboard/dashboard_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  final String email; // ⬅ MUST RECEIVE EMAIL
+
+  const ForgotPasswordScreen({super.key, required this.email});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -22,7 +26,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void _onReset() {
+  // ---------------- RESET PASSWORD ----------------
+  Future<void> _onReset() async {
     final newPass = _newPasswordController.text;
     final confirm = _confirmPasswordController.text;
 
@@ -30,22 +35,45 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _showSnack("Please fill all fields");
       return;
     }
+
     if (newPass != confirm) {
       _showSnack("Passwords do not match");
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const DashboardScreen(userName: ""),
-      ),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse("http://10.0.2.2:5000/reset-password"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": widget.email,
+          "new_password": newPass,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        _showSnack("Password updated successfully");
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DashboardScreen(userName: ""),
+          ),
+        );
+      } else {
+        _showSnack(data["error"] ?? "Error updating password");
+      }
+    } catch (e) {
+      _showSnack("Server unreachable");
+    }
   }
 
   void _showSnack(String text) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(text)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text)),
+    );
   }
 
   InputDecoration _fieldDecoration(String hint) {
@@ -95,18 +123,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          /// BACKGROUND 
           SizedBox.expand(
             child: Image.asset(
               "assests/home.png",
-              fit: BoxFit.cover, 
+              fit: BoxFit.cover,
             ),
           ),
 
-          ///  CONTENT 
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -114,10 +140,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 children: [
                   const SizedBox(height: 20),
 
-                  Image.asset(
-                    "assests/appname.png",
-                    height: 80,
-                  ),
+                  Image.asset("assests/appname.png", height: 80),
 
                   const SizedBox(height: 40),
 

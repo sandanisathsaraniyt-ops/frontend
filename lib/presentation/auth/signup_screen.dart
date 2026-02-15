@@ -34,21 +34,7 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  // ---------------- EMAIL VALIDATION ----------------
-  bool _isValidEmail(String email) {
-    return RegExp(r"^[a-zA-Z0-9._%+-]+@gmail\.com$").hasMatch(email);
-  }
-
-  // ---------------- PASSWORD VALIDATION ----------------
-  bool _isStrongPassword(String password) {
-    return password.length >= 8 &&
-        RegExp(r'[A-Z]').hasMatch(password) &&
-        RegExp(r'[a-z]').hasMatch(password) &&
-        RegExp(r'[0-9]').hasMatch(password) &&
-        RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
-  }
-
-  // ---------------- SIGNUP REQUEST ----------------
+  // ---------------- SIGNUP REQUEST (BACKEND VALIDATION) ----------------
   Future<void> _onSignUp() async {
     setState(() {
       _emailError = null;
@@ -67,19 +53,8 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    if (!_isValidEmail(email)) {
-      setState(() => _emailError = "Invalid email. Use name@gmail.com");
-      return;
-    }
-
     if (pass != confirm) {
       setState(() => _passwordError = "Passwords do not match");
-      return;
-    }
-
-    if (!_isStrongPassword(pass)) {
-      setState(() => _passwordError =
-          "Password must have 8+ chars, capital, number, and symbol");
       return;
     }
 
@@ -104,14 +79,19 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         );
       } else {
-        if (data["error"].toString().contains("Username exists")) {
+        String error = data["error"] ?? "Error";
+
+        if (error.contains("email") || error.contains("Email")) {
+          _emailError = error;
+        } 
+        else if (error.contains("Username")) {
           _usernameError = "Username already taken";
           _usernameSuggestions = List<String>.from(data["suggestions"] ?? []);
-        } else if (data["error"].toString().contains("Email")) {
-          _emailError = data["error"];
-        } else {
-          _passwordError = data["error"];
         }
+        else if (error.contains("password") || error.contains("Password")) {
+          _passwordError = error;
+        }
+
         setState(() {});
       }
     } catch (e) {
@@ -191,16 +171,14 @@ class _SignupScreenState extends State<SignupScreen> {
                   // Email
                   TextField(
                     controller: _emailController,
-                    decoration: _fieldDecoration("E mail", error: _emailError),
+                    decoration: _fieldDecoration("Email", error: _emailError),
                   ),
-
                   const SizedBox(height: 18),
 
                   // Username
                   TextField(
                     controller: _usernameController,
-                    decoration:
-                        _fieldDecoration("Username", error: _usernameError),
+                    decoration: _fieldDecoration("Username", error: _usernameError),
                   ),
 
                   if (_usernameSuggestions.isNotEmpty)
@@ -240,14 +218,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         .copyWith(
                       suffixIcon: IconButton(
                         icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () {
-                          setState(() => _obscurePassword = !_obscurePassword);
-                        },
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 18),
 
                   // Confirm Password
@@ -257,10 +234,10 @@ class _SignupScreenState extends State<SignupScreen> {
                     decoration: _fieldDecoration("Confirm Password").copyWith(
                       suffixIcon: IconButton(
                         icon: Icon(
-                            _obscureConfirm ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () {
-                          setState(() => _obscureConfirm = !_obscureConfirm);
-                        },
+                          _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureConfirm = !_obscureConfirm),
                       ),
                     ),
                   ),

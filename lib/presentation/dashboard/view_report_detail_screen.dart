@@ -35,6 +35,7 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
   }
 
   Future<void> fetchReport() async {
+    setState(() => isLoading = true);
     try {
       final response = await http.get(
         Uri.parse(
@@ -50,13 +51,20 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
           activities = data["activities"];
 
           dysRisk = data["dyscalculia_risk"];
-          attentionStatus = data["attention_status"];
-          memoryStatus = data["memory_status"];
 
-          // ✅ Check if activities 10–13 already done
-          attentionMemoryDone = activities.any(
-            (a) => a["activity_id"] >= 10 && a["activity_id"] <= 13,
-          );
+          // Show Not Yet Tested if Activity 10–13 not done
+          final memoryActivitiesDone = activities
+              .any((a) => a["activity_id"] >= 10 && a["activity_id"] <= 13);
+
+          attentionStatus = memoryActivitiesDone
+              ? data["attention_status"]
+              : "Not Yet Tested";
+
+          memoryStatus = memoryActivitiesDone
+              ? data["memory_status"]
+              : "Not Yet Tested";
+
+          attentionMemoryDone = memoryActivitiesDone;
 
           isLoading = false;
         });
@@ -85,6 +93,15 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
         body: const Center(child: Text("Report not available")),
       );
     }
+
+    // ---------- Split activities ----------
+    final statusActivities = activities
+        .where((a) => a["activity_id"] >= 1 && a["activity_id"] <= 9)
+        .toList();
+
+    final memoryActivities = activities
+        .where((a) => a["activity_id"] >= 10 && a["activity_id"] <= 13)
+        .toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -147,6 +164,28 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
                   ),
                   const SizedBox(height: 12),
 
+                  // Status Activities 1–9
+                  ...statusActivities.map((a) => ListTile(
+                        title: Text("Activity ${a['activity_id']}"),
+                        subtitle: Text(
+                          "Status Level: ${a['result']}",
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      )),
+
+                  const SizedBox(height: 12),
+
+                  // Memory/Attention Activities 10–13
+                  ...memoryActivities.map((a) => ListTile(
+                        title: Text("Activity ${a['activity_id']}"),
+                        subtitle: Text(
+                          "Memory Attention Level: ${a['result']}",
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      )),
+
+                  const SizedBox(height: 12),
+
                   _dyscalculiaStatus(),
                   const SizedBox(height: 12),
                   _attentionStatus(),
@@ -160,8 +199,7 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
 
             // ---------------- RECOMMEND BUTTON ----------------
             GestureDetector(
-              onTap: () {
-                // ❌ Already completed attention & memory activities
+              onTap: () async {
                 if (attentionMemoryDone) {
                   showDialog(
                     context: context,
@@ -181,7 +219,6 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
                   return;
                 }
 
-                // ❌ No dyscalculia risk
                 if (dysRisk == "No Risk") {
                   showDialog(
                     context: context,
@@ -201,14 +238,17 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
                   return;
                 }
 
-                // ✅ Navigate to Activity 10
-                Navigator.push(
+                // Navigate to Activity10 and refresh after completion
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => const Activity10Screen(),
                     settings: RouteSettings(arguments: widget.childName),
                   ),
                 );
+
+                // Refresh report after completing Activity10+
+                fetchReport();
               },
               child: _yellowButton("Recommend"),
             ),
@@ -221,7 +261,6 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
   }
 
   // ---------------- HELPERS ----------------
-
   Widget _infoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -282,7 +321,6 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
   }
 
   // ---------------- STATUS WIDGETS ----------------
-
   Widget _dyscalculiaStatus() {
     if (dysRisk == "High Risk") {
       return _statusDisplay(
@@ -290,14 +328,12 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
         "High Dyscalculia Risk\nYour child needs intervention",
       );
     }
-
     if (dysRisk == "Mild Risk") {
       return _statusDisplay(
         Colors.orange,
         "Mild Dyscalculia Risk\nRecommended activities",
       );
     }
-
     return _statusDisplay(
       Colors.green,
       "No Dyscalculia Risk\nYour child is doing well",
@@ -306,30 +342,22 @@ class _ViewReportDetailScreenState extends State<ViewReportDetailScreen> {
 
   Widget _attentionStatus() {
     if (attentionStatus == "Attention Impairment") {
-      return _statusDisplay(
-        Colors.red,
-        "Attention Impairment Detected",
-      );
+      return _statusDisplay(Colors.red, "Attention Impairment Detected");
     }
-
-    return _statusDisplay(
-      Colors.green,
-      "Attention Level is Normal",
-    );
+    if (attentionStatus == "Not Yet Tested") {
+      return _statusDisplay(Colors.grey, "Attention not yet assessed");
+    }
+    return _statusDisplay(Colors.green, "Attention Level is Normal");
   }
 
   Widget _memoryStatus() {
     if (memoryStatus == "Memory Impairment") {
-      return _statusDisplay(
-        Colors.red,
-        "Memory Impairment Detected",
-      );
+      return _statusDisplay(Colors.red, "Memory Impairment Detected");
     }
-
-    return _statusDisplay(
-      Colors.green,
-      "Memory Skills are Normal",
-    );
+    if (memoryStatus == "Not Yet Tested") {
+      return _statusDisplay(Colors.grey, "Memory not yet assessed");
+    }
+    return _statusDisplay(Colors.green, "Memory Skills are Normal");
   }
 
   Widget _statusDisplay(Color color, String text) {

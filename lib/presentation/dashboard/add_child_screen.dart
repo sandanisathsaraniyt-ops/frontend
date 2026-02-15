@@ -17,17 +17,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
   int? selectedGrade;
 
   bool isLoading = false;
+  List<String> nameSuggestions = [];
 
   @override
   Widget build(BuildContext context) {
-   final email = ModalRoute.of(context)?.settings.arguments as String?;
-if (email == null) {
-  return const Scaffold(
-    body: Center(
-      child: Text("Error: No parent email received"),
-    ),
-  );
-}
+    final email = ModalRoute.of(context)?.settings.arguments as String?;
+    if (email == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text("Error: No parent email received"),
+        ),
+      );
+    }
 
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -46,7 +47,6 @@ if (email == null) {
                     fit: BoxFit.cover,
                   ),
                 ),
-
                 Positioned(
                   top: 30,
                   left: 20,
@@ -70,6 +70,32 @@ if (email == null) {
                     hint: "Name of Child",
                     controller: nameController,
                   ),
+
+                  if (nameSuggestions.isNotEmpty)
+                    Column(
+                      children: nameSuggestions
+                          .map(
+                            (s) => GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  nameController.text = s;
+                                  nameSuggestions.clear();
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Text(
+                                  s,
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
 
                   const SizedBox(height: 15),
 
@@ -220,33 +246,50 @@ if (email == null) {
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      nameSuggestions.clear();
+    });
 
-    final response = await http.post(
-      Uri.parse("http://10.0.2.2:5000/add-child"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "email": email,
-        "name": nameController.text.trim(),
-        "gender": selectedGender,
-        "age": selectedAge,
-        "grade": selectedGrade,
-      }),
-    );
-
-    setState(() => isLoading = false);
-
-    if (response.statusCode == 201) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Child added successfully")),
+    try {
+      final response = await http.post(
+        Uri.parse("http://10.0.2.2:5000/add-child"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "name": nameController.text.trim(),
+          "gender": selectedGender,
+          "age": selectedAge,
+          "grade": selectedGrade,
+        }),
       );
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pop(context);
-      });
-    } else {
-      final msg = jsonDecode(response.body)["error"];
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
+
+      final responseData = jsonDecode(response.body);
+      setState(() => isLoading = false);
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Child added successfully")),
+        );
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pop(context);
+        });
+      } else if (responseData["exists"] == true &&
+          responseData["suggestions"] != null) {
+        // Show suggestions below input field
+        setState(() {
+          nameSuggestions = List<String>.from(responseData["suggestions"]);
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseData["error"] ?? "Error")),
+        );
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     }
   }
 }
