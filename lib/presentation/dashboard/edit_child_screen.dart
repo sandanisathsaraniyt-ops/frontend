@@ -36,28 +36,34 @@ class _EditChildScreenState extends State<EditChildScreen> {
 
   /// FETCH CHILD DETAILS
   Future<void> fetchChildDetails() async {
-    try {
-      final response = await http.get(
-        Uri.parse("http://10.0.2.2:5000/child/$originalChildName"),
-      );
+  try {
+    final response = await http.get(
+      Uri.parse(
+        "http://10.0.2.2:5000/child/${Uri.encodeComponent(originalChildName)}",
+      ),
+    );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
 
-        setState(() {
-          nameController.text = data["name"];
-          selectedAge = data["age"].toString();
-          selectedGrade = data["grade"].toString();
-          selectedGender = data["gender"];
-          isLoading = false;
-        });
-      } else {
-        _showError("Failed to load child details");
-      }
-    } catch (e) {
-      _showError("Server not reachable");
+      setState(() {
+        nameController.text = data["name"];
+        selectedAge = data["age"].toString();
+        selectedGrade = data["grade"].toString();
+        selectedGender = data["gender"];
+        isLoading = false;
+      });
+    } else {
+      setState(() => isLoading = false);
+      _showError("Failed to load child details (${response.statusCode})");
     }
+  } catch (e) {
+    setState(() => isLoading = false);
+    _showError("Server not reachable: $e");
   }
+}
+
+
 
   /// UPDATE CHILD
   Future<void> updateChild() async {

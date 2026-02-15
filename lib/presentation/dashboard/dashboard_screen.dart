@@ -185,8 +185,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 15),
 
                   /// Edit Child
-GestureDetector(
-  onTap: () {
+                GestureDetector(
+  onTap: () async {
     if (selectedChild == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a child first")),
@@ -194,14 +194,25 @@ GestureDetector(
       return;
     }
 
-    Navigator.pushNamed(
+    // Wait for EditChildScreen to finish
+    await Navigator.pushNamed(
       context,
       '/edit-child',
-      arguments: selectedChild, // ✅ only child name
+      arguments: selectedChild,
     );
+
+    // Refresh children list from server
+    await fetchChildren();
+
+    // Optionally, reset selectedChild to updated name if needed
+    setState(() {
+      selectedChild = children.contains(selectedChild) ? selectedChild : null;
+    });
   },
   child: _yellowButton("Edit Child"),
 ),
+
+
 
 
                   const SizedBox(height: 15),
